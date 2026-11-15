@@ -1,0 +1,198 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>FieldShift · Sowing Planner</title>
+  <meta name="description" content="Satellite-informed sowing windows for farmers, built on NASA MODIS land-surface temperature data.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="bg-glow" aria-hidden="true"></div>
+  <div class="bg-grid" aria-hidden="true"></div>
+
+  <header class="topbar">
+    <a class="brand" href="#" aria-label="FieldShift home">
+      <svg class="brand-mark" viewBox="0 0 32 32" fill="none" aria-hidden="true">
+        <circle cx="16" cy="16" r="12.5" stroke="currentColor" stroke-opacity=".35" stroke-width="1.4"/>
+        <ellipse cx="16" cy="16" rx="15" ry="5.5" transform="rotate(-28 16 16)" stroke="currentColor" stroke-width="1.4"/>
+        <path d="M16 23.5V13.5M16 17c-3 0-4.6-1.8-4.6-4.6 3 0 4.6 1.7 4.6 4.6zM16 15c2.7 0 4.2-1.6 4.2-4.2-2.7 0-4.2 1.5-4.2 4.2z" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+        <circle cx="27.6" cy="9.6" r="1.6" fill="currentColor"/>
+      </svg>
+      <span>Field<b>Shift</b></span>
+    </a>
+    <div class="topbar-meta">
+      <span class="chip chip-live"><span class="live-dot"></span>MODIS LST · 1&nbsp;km</span>
+      <span class="topbar-date" id="todayLabel"></span>
+    </div>
+  </header>
+
+  <main class="shell">
+    <section class="hero">
+      <p class="eyebrow">Satellite-informed planting</p>
+      <h1>Know the right week to put seed in the&nbsp;ground.</h1>
+      <p class="lede">Land-surface temperature forecasts derived from NASA Earth observation data, turned into a full season plan for your paddock.</p>
+    </section>
+
+    <section class="grid-top">
+      <!-- 01 · Location -->
+      <div class="panel map-panel">
+        <div class="panel-head">
+          <span class="step">01</span>
+          <h2>Farm location</h2>
+          <span class="panel-hint">Preview covers Perth, Brisbane &amp; Melbourne</span>
+        </div>
+
+        <div class="search" id="search">
+          <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="6.5"/><path d="m20 20-4.2-4.2"/></svg>
+          <input id="addressInput" type="text" autocomplete="off" spellcheck="false"
+                 placeholder="Enter your farm address, e.g. 12 Hay St, Perth WA"
+                 role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="suggestions" aria-label="Farm address">
+          <kbd class="search-kbd">Enter</kbd>
+          <ul id="suggestions" class="suggestions" role="listbox" hidden></ul>
+        </div>
+
+        <div class="map-wrap">
+          <div id="map" aria-label="Map of Australia"></div>
+          <div class="map-vignette" aria-hidden="true"></div>
+          <div class="map-hud" id="mapHud">
+            <span class="hud-label">Centre</span>
+            <span class="hud-val" id="hudCoords">—</span>
+          </div>
+          <div class="map-quick">
+            <span>Jump to</span>
+            <button type="button" data-loc="perth">Perth</button>
+            <button type="button" data-loc="brisbane">Brisbane</button>
+            <button type="button" data-loc="melbourne">Melbourne</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="side">
+        <!-- 02 · Crop -->
+        <div class="panel">
+          <div class="panel-head">
+            <span class="step">02</span>
+            <h2>Crop</h2>
+          </div>
+          <div class="crop-grid" role="radiogroup" aria-label="Crop">
+            <button type="button" class="crop" role="radio" aria-checked="true" data-crop="wheat">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <path d="M12 21.5V5.5"/><path d="M12 5.5c0-1.4.6-2.4 0-3.8-.6 1.4 0 2.4 0 3.8z"/>
+                <path d="M12 10c-2.2 0-3.5-1.4-3.5-3.5 2.2 0 3.5 1.3 3.5 3.5zM12 10c2.2 0 3.5-1.4 3.5-3.5-2.2 0-3.5 1.3-3.5 3.5z"/>
+                <path d="M12 14.5c-2.2 0-3.5-1.4-3.5-3.5 2.2 0 3.5 1.3 3.5 3.5zM12 14.5c2.2 0 3.5-1.4 3.5-3.5-2.2 0-3.5 1.3-3.5 3.5z"/>
+                <path d="M12 19c-2.2 0-3.5-1.4-3.5-3.5 2.2 0 3.5 1.3 3.5 3.5zM12 19c2.2 0 3.5-1.4 3.5-3.5-2.2 0-3.5 1.3-3.5 3.5z"/>
+              </svg>
+              <span class="crop-name">Wheat</span>
+              <span class="crop-tag tag-ready">Data ready</span>
+            </button>
+            <button type="button" class="crop" role="radio" aria-checked="false" data-crop="barley">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <path d="M12 21.5V5"/>
+                <path d="M12 9.5c-2 0-3.2-1.3-3.2-3.2 2 0 3.2 1.2 3.2 3.2zM12 9.5c2 0 3.2-1.3 3.2-3.2-2 0-3.2 1.2-3.2 3.2z"/>
+                <path d="M12 14c-2 0-3.2-1.3-3.2-3.2 2 0 3.2 1.2 3.2 3.2zM12 14c2 0 3.2-1.3 3.2-3.2-2 0-3.2 1.2-3.2 3.2z"/>
+                <path d="M12 18.5c-2 0-3.2-1.3-3.2-3.2 2 0 3.2 1.2 3.2 3.2zM12 18.5c2 0 3.2-1.3 3.2-3.2-2 0-3.2 1.2-3.2 3.2z"/>
+                <path d="M8.8 6.3 5.5 2.8M15.2 6.3l3.3-3.5M8.8 10.8 5 8.2M15.2 10.8 19 8.2M12 5V1.8"/>
+              </svg>
+              <span class="crop-name">Barley</span>
+              <span class="crop-tag tag-ready">Data ready</span>
+            </button>
+            <button type="button" class="crop" role="radio" aria-checked="false" data-crop="corn">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <path d="M12 2.5c2.4 0 3.8 3 3.8 7.3S14.4 18 12 18s-3.8-3.9-3.8-8.2S9.6 2.5 12 2.5z"/>
+                <path d="M9.8 6.5h4.4M9 10h6M9.6 13.5h4.8M12 2.5V18"/>
+                <path d="M8.4 10.5c-2.2 2-2.8 6.2-1.4 10.5 2-.9 3.9-2 5-3M15.6 10.5c2.2 2 2.8 6.2 1.4 10.5-2-.9-3.9-2-5-3"/>
+              </svg>
+              <span class="crop-name">Corn</span>
+              <span class="crop-tag tag-ready">Data ready</span>
+            </button>
+          </div>
+
+          <div class="target" id="targetCtl">
+            <div class="target-head">
+              <label for="targetRange">Target sowing temperature</label>
+              <button type="button" class="target-reset" id="targetReset" hidden>Reset to 20&nbsp;°C</button>
+              <output id="targetOut" for="targetRange">20.0<span>°C</span></output>
+            </div>
+            <div class="range-wrap">
+              <input type="range" id="targetRange" min="16" max="34" step="0.5" value="20" aria-describedby="targetHint">
+              <span class="range-default" id="rangeDefault" aria-hidden="true"></span>
+            </div>
+            <div class="range-scale" aria-hidden="true"><span>16°</span><span>25°</span><span>34°</span></div>
+            <p class="target-hint" id="targetHint">Predicted land-surface temperature the sowing window should sit closest to.</p>
+            <label class="rain-toggle">
+              <input type="checkbox" id="rainToggle" checked>
+              <span class="rt-switch" aria-hidden="true"></span>
+              <span class="rt-text"><b>Consider rainfall</b><small id="rainHint">Only sow when typical rain around sowing is in the crop's range.</small></span>
+            </label>
+          </div>
+        </div>
+
+        <!-- Recommendation -->
+        <div class="panel kpi" id="kpi" aria-live="polite"></div>
+      </div>
+    </section>
+
+    <!-- 03 · Season plan -->
+    <section class="panel plan-panel">
+      <div class="panel-head plan-head">
+        <span class="step">03</span>
+        <h2>Season plan</h2>
+        <div class="head-tools">
+          <label class="select">
+            <span>Season</span>
+            <select id="seasonSelect" aria-label="Season"></select>
+          </label>
+          <div class="segmented" role="tablist" aria-label="View">
+            <button type="button" role="tab" aria-selected="true" data-view="timeline">Timeline</button>
+            <button type="button" role="tab" aria-selected="false" data-view="calendar">Calendar</button>
+          </div>
+        </div>
+      </div>
+      <div class="legend" id="legend"></div>
+      <div id="planBody"></div>
+    </section>
+
+    <section class="phase-grid" id="phaseCards"></section>
+
+    <!-- Model (intentionally low-key) -->
+    <section class="model">
+      <details>
+        <summary>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" aria-hidden="true"><path d="m9 6 6 6-6 6"/></svg>
+          About the temperature model
+        </summary>
+        <div class="model-body">
+          <pre class="code"><code><span class="k">def</span> <span class="f">predict_lst</span>(year, day):
+    t = <span class="n">2</span> * np.pi * day / <span class="n">365</span>
+    <span class="k">return</span> (<span class="n">302.008</span> - <span class="n">0.0549</span> * (year - <span class="n">2000</span>)
+            - <span class="n">0.651</span> * np.sin(t)   + <span class="n">9.866</span> * np.cos(t)
+            - <span class="n">0.395</span> * np.sin(<span class="n">2</span>*t) - <span class="n">1.668</span> * np.cos(<span class="n">2</span>*t))</code></pre>
+          <ul class="model-notes">
+            <li>Harmonic regression on MODIS Terra MOD11A1 daytime land-surface temperature (1&nbsp;km). Output is in Kelvin and shown here in °C.</li>
+            <li><code>day</code> is day of year (1–365). The two sine/cosine pairs capture the annual and semi-annual cycle; the year term is the long-run trend.</li>
+            <li>The sowing start is the sowing window (6 weeks for wheat and barley, 2 weeks for corn) whose daily predicted LST stays closest to the chosen target (lowest RMSE). Defaults: wheat 20&nbsp;°C, barley 17.5&nbsp;°C, corn 21&nbsp;°C.</li>
+            <li>The sowing start is given as a range. The same search is run on the two 20% curves: a warmer-than-usual year reaches the target on one day, a cooler one on another, and any start between them is reasonable. The aim date is the centre curve's best fit.</li>
+            <li>The curve is cyclical, so a target is often crossed twice a year (cooling and warming). A second sowing date is offered when both dates average within 1&nbsp;°C of the target and the temperature moves at least 1.5&nbsp;°C away from it between them.</li>
+            <li>The shaded band shows the spread of real readings around the curve: two more harmonic fits with the same terms, one with 20% of readings above it and one with 20% below, so the middle 60% of readings fall inside the band. Faint dotted lines show two more fits for the minimum and maximum readings.</li>
+            <li>The model has no location input, so Perth, Brisbane and Melbourne currently share the same curve.</li>
+            <li>Rainfall is a separate curve for each location: a 3-harmonic fit to NASA POWER daily precipitation (MERRA-2, bias-corrected, 2001–2025). With <em>Consider rainfall</em> on, a sowing window only qualifies if its typical rain over the 2 weeks before and during sowing is in the crop's range (wheat and barley 5–25, corn 10–35 mm/week). Temperature then picks the best of the qualifying windows.</li>
+          </ul>
+        </div>
+      </details>
+    </section>
+  </main>
+
+  <footer class="foot">
+    <span>FieldShift · prototype</span>
+    <span>Built on NASA Earth observation data · Imagery © Esri</span>
+  </footer>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
