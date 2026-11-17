@@ -167,7 +167,7 @@
           About the temperature model
         </summary>
         <div class="model-body">
-          <pre class="code"><code><span class="c"># Brisbane (Toowoomba pixel). Melbourne uses this curve for now.</span>
+          <pre class="code"><code><span class="c"># Brisbane (Toowoomba pixel)</span>
 <span class="k">def</span> <span class="f">predict_lst</span>(year, day):
     t = <span class="n">2</span> * np.pi * day / <span class="n">365</span>
     <span class="k">return</span> (<span class="n">302.008</span> - <span class="n">0.0549</span> * (year - <span class="n">2000</span>)
@@ -179,7 +179,14 @@
     t = <span class="n">2</span> * np.pi * day / <span class="n">365</span>
     <span class="k">return</span> (<span class="n">298.130</span> - <span class="n">0.0305</span> * (year - <span class="n">2000</span>)
             + <span class="n">0.487</span> * np.sin(t)   + <span class="n">9.696</span> * np.cos(t)
-            - <span class="n">0.111</span> * np.sin(<span class="n">2</span>*t) - <span class="n">1.019</span> * np.cos(<span class="n">2</span>*t))</code></pre>
+            - <span class="n">0.111</span> * np.sin(<span class="n">2</span>*t) - <span class="n">1.019</span> * np.cos(<span class="n">2</span>*t))
+
+<span class="c"># Melbourne</span>
+<span class="k">def</span> <span class="f">predict_lst</span>(year, day):
+    t = <span class="n">2</span> * np.pi * day / <span class="n">365</span>
+    <span class="k">return</span> (<span class="n">296.276</span> - <span class="n">0.0091</span> * (year - <span class="n">2000</span>)
+            + <span class="n">2.988</span> * np.sin(t)   + <span class="n">13.399</span> * np.cos(t)
+            + <span class="n">1.006</span> * np.sin(<span class="n">2</span>*t) + <span class="n">0.284</span> * np.cos(<span class="n">2</span>*t))</code></pre>
           <ul class="model-notes">
             <li>Harmonic regression on MODIS Terra MOD11A1 daytime land-surface temperature (1&nbsp;km). Output is in Kelvin and shown here in °C.</li>
             <li><code>day</code> is day of year (1–365). The two sine/cosine pairs capture the annual and semi-annual cycle; the year term is the long-run trend.</li>
@@ -187,7 +194,7 @@
             <li>The sowing start is given as a range. The same search is run on the two 20% curves: a warmer-than-usual year reaches the target on one day, a cooler one on another, and any start between them is reasonable. The aim date is the centre curve's best fit.</li>
             <li>The curve is cyclical, so a target is often crossed twice a year (cooling and warming). A second sowing date is offered when both dates average within 1&nbsp;°C of the target and the temperature moves at least 1.5&nbsp;°C away from it between them.</li>
             <li>The shaded band shows the spread of real readings around the curve: two more harmonic fits with the same terms, one with 20% of readings above it and one with 20% below, so the middle 60% of readings fall inside the band. Faint dotted lines show two more fits for the minimum and maximum readings.</li>
-            <li>Brisbane and Perth each have their own fitted curves, from a MODIS pixel near each region. Melbourne doesn't have its own fit yet, so it uses Brisbane's curves for now.</li>
+            <li>Brisbane, Perth and Melbourne each have their own fitted curves, from a MODIS pixel near each region.</li>
             <li>Rainfall is a separate curve for each location: a 3-harmonic fit to NASA POWER daily precipitation (MERRA-2, bias-corrected, 2001–2025). With <em>Consider rainfall</em> on, a sowing window only qualifies if its typical rain over the 2 weeks before and during sowing is in the crop's range (wheat and barley 5–25, corn 10–35 mm/week). Temperature then picks the best of the qualifying windows.</li>
           </ul>
         </div>

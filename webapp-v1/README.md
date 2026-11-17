@@ -91,7 +91,7 @@ def predict_lst(year, day):
 - **The output is in Kelvin.** The app converts it with `tempC = predictLST(...) - 273.15`.
 - Over a year it ranges from about **15.8 °C** (late June) to about **35.9 °C** (early January).
 
-In `app.js` this is `predictLST(year, day, loc)`, and `tempC(date, loc)` wraps it for a JS `Date`. Each location has its own set of curves in `LST_MODELS` (Brisbane from `../day_1km_harmonic_regression-Queensland.ipynb`, Perth from `../day_1km_harmonic_regression-Perth.ipynb`), linked through `LOCATIONS[...].lst`. Melbourne doesn't have a fit yet and uses Brisbane's. `lstFor(loc)` picks the right set and falls back to Brisbane when no location is chosen. The coefficients above are Brisbane's.
+In `app.js` this is `predictLST(year, day, loc)`, and `tempC(date, loc)` wraps it for a JS `Date`. Each location has its own set of curves in `LST_MODELS` (Brisbane from `../day_1km_harmonic_regression-Queensland.ipynb`, Perth from `../day_1km_harmonic_regression-Perth.ipynb`, Melbourne from `../day_1km_harmonic_regression-melbourne.ipynb`), linked through `LOCATIONS[...].lst`. `lstFor(loc)` picks the right set and falls back to Brisbane when no location is chosen. The coefficients above are Brisbane's.
 
 **Spread band.** Two more harmonic curves with the same terms, also fitted on the Brisbane (Toowoomba) pixel, show how far real readings stray from the centre curve:
 
@@ -103,7 +103,7 @@ In `app.js` this is `predictLST(year, day, loc)`, and `tempC(date, loc)` wraps i
 | Maximum (`max`) | 312.917 | −0.0849 | −1.543 | 13.005 | −1.158 | −2.124 |
 | Minimum (`min`) | 289.016 | −0.1710 | 1.661 | 5.388 | 1.353 | −0.900 |
 
-So the middle 60% of readings fall between `lower` and `upper`, a band about 2–6 °C wide. `max` and `min` run from about 22–49.5 °C and 4–18 °C. All five live in `LST_MODEL`, `harmonicLST(coef, year, day)` evaluates any of them, and `tempBand(date)` returns `{ lo, hi, min, max }` in °C. The timeline draws the band as a fill and min/max as faint dotted lines, which is why its axis runs 0–50 °C. Sowing dates are picked from the centre curve, and the start range comes from `upper`/`lower` (see *Picking the sowing window*). `min`/`max` are drawn and shown in the tooltip only.
+So the middle 60% of readings fall between `lower` and `upper`, a band about 2–6 °C wide. `max` and `min` run from about 22–49.5 °C and 4–18 °C. All five live in `LST_MODEL`, `harmonicLST(coef, year, day)` evaluates any of them, and `tempBand(date)` returns `{ lo, hi, min, max }` in °C. The timeline draws the band as a fill and min/max as faint dotted lines, which is why its axis runs 0–55 °C. Sowing dates are picked from the centre curve, and the start range comes from `upper`/`lower` (see *Picking the sowing window*). `min`/`max` are drawn and shown in the tooltip only.
 
 ### 2. Rainfall model
 
@@ -239,7 +239,7 @@ All colours, radii and fonts are CSS variables in `:root` at the top of `styles.
 
 ## Assumptions and limitations
 
-- **Melbourne has no temperature model of its own.** Brisbane (MODIS pixel at about −27.96, 151.62, on the Darling Downs) and Perth have their own curves. Melbourne borrows Brisbane's, but it's about 1,300 km further south with a much cooler climate, so its dates are especially rough. A note in the app says so.
+- **Each location's model comes from one MODIS pixel near the region, not the city itself.** Brisbane uses a Darling Downs pixel (about −27.96, 151.62), Perth a south-west WA pixel (−34.09, 116.43), and Melbourne a pixel north-west of the city (−37.06, 144.78).
 - **The model predicts land-surface temperature, not air or soil temperature.** Daytime LST runs warmer than air temperature, so targets like 20 °C are compared against LST.
 - **The barley target is near the bottom of the curve.** 17.5 °C is only about 1.7 °C above the coldest predicted point, so barley's best window sits across the winter low, and small changes to the target move its date a lot.
 - **"Best fit" is about temperature only.** For corn at 21 °C the autumn date (early May) scores very slightly better than the spring one (mid-August). Corn is normally a spring/summer crop, so Date 2 is usually the sensible choice. The farmer chooses, and the ↗ warming / ↘ cooling label is there to help.

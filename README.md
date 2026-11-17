@@ -22,6 +22,8 @@ field-shift-nasa/
 ├── day_1km-perth.csv                           MODIS MOD11A1 export with a south-west WA pixel (see Known issues)
 ├── day_1km_harmonic_regression-Queensland.ipynb  Main analysis: cleaning, model comparison, spread curves (the app's model)
 ├── day_1km_harmonic_regression-Perth.ipynb     Same workflow repeated on the WA export (the app's Perth model)
+├── day_1km-melbourne.csv                       MODIS MOD11A1 daily LST, one 1 km pixel north-west of Melbourne, VIC
+├── day_1km_harmonic_regression-melbourne.ipynb Same workflow for Melbourne (the app's Melbourne model)
 ├── day_1km_Towoomba_rateOfChange.ipynb         Per-day-of-year warming/cooling trend
 ├── rate_of_change.csv                          Output of the trend notebook (slope m and intercept c for each day)
 ├── rainfall/
@@ -101,6 +103,8 @@ In the app, the upper and lower curves become the shaded band and the **sowing s
 
 **A second site** (`day_1km_harmonic_regression-Perth.ipynb`). I repeated the whole workflow, including the quantile and max/min curves, on a Western Australia export so that Perth could have its own model. Harmonic was again the clear winner (test R² 0.645, RMSE 4.82 K), and these five curves now drive the app when Perth is selected. The CSV does still contain a second pixel, though (see [Known issues](#known-issues-and-open-questions)).
 
+**A third site** (`day_1km_harmonic_regression-melbourne.ipynb`). The same workflow on a single pixel north-west of Melbourne (−37.06, 144.78). Harmonic was the best fit again (train R² 0.797, test R² 0.679, RMSE 5.33 K), and its five curves drive the app when Melbourne is selected.
+
 ### 6. Building the web app with Claude Code
 
 With the model settled, I used **Claude Code** to generate the web app in `webapp-v1/`. I gave it the fitted equations, the crop calendars and the behaviour I wanted, and iterated on the result. The app is plain HTML, CSS and JavaScript, with no framework and no build step. Leaflet provides the satellite map, and all the planning maths runs in the browser.
@@ -129,7 +133,7 @@ How I checked it:
 - Took screenshots in headless Microsoft Edge at desktop (1440 px) and phone (390 px) widths across the main states.
 - Cross-checked the sowing window rankings against a standalone Node script that uses the same equation.
 
-After those commits, the app was extended so that each location can carry its own temperature curves. Brisbane uses the Queensland fit, Perth uses the Perth fit, and Melbourne falls back to Brisbane's curves until it has its own.
+After those commits, the app was extended so that each location can carry its own temperature curves. Brisbane uses the Queensland fit, Perth uses the Perth fit, and Melbourne uses the Melbourne fit.
 
 The full technical write-up is in [`webapp-v1/README.md`](webapp-v1/README.md). It covers every UI element, the window-selection algorithm, a code map, URL parameters for demos, and how to add crops or locations.
 
@@ -162,7 +166,7 @@ jupyter notebook
 ## Known issues and open questions
 
 - **Recent years read colder.** On the 2022–2026 test set the harmonic model's residuals are consistently negative: −4.2, −1.1, −2.9, −4.5 and −5.2 K by year at Toowoomba. The annual-mean plot shows a step down from about 2021. This could be a real climate signal, a change in the sensor or its processing, or a drift in the satellite's overpass time. Terra's orbit has been drifting since its inclination adjustments ended, which shifts when daytime LST is sampled. It isn't resolved yet.
-- **Melbourne has no temperature model of its own yet.** Brisbane and Perth each have their own fitted curves, but Melbourne borrows Brisbane's, so its sowing dates are only a rough guide. The app says so on screen.
+- **Each model comes from a single pixel near the region**, not from the city itself or an average over the area. Farms far from those pixels will see dates that are only a rough guide.
 - **`day_1km-perth.csv` contains two pixels.** Alongside a south-west WA pixel (−34.09, 116.43), the export also contains the full Toowoomba series, so the Perth curves in the app are fitted on mixed data. This is why Perth's max curve is identical to Brisbane's. The WA pixel is also about 240 km south of Perth city. Refitting on the WA pixel alone (filtering to `Latitude < -30`) would give a cleaner Perth model.
 - **Spread curve labelling.** The upper and lower curves were fitted at the 30th and 70th percentiles, so the band covers roughly the middle 40% of training readings. Some comments in the app describe it as "20% above / 20% below, middle 60%", which needs correcting. Because of the cold bias above, 70.6% of test readings fall below the lower curve.
 - **LST is not air or soil temperature.** Daytime land-surface temperature runs warmer than air temperature, so the crop targets (wheat 20 °C, barley 17.5 °C, corn 21 °C) are set against LST, not textbook air-temperature values.

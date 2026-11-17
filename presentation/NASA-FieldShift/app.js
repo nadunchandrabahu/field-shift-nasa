@@ -24,8 +24,16 @@
       max:   [312.917,  -0.0849, -1.543, 13.005,  -1.158,  -2.124],
       min:   [282.590,  -0.0704,  3.249,  7.084,   1.142,  -0.372],
     },
+    // Melbourne: day_1km_harmonic_regression-melbourne.ipynb (pixel at -37.06, 144.78)
+    melbourne: {
+      mid:   [296.2763, -0.0091,  2.9884, 13.3994, 1.0061,  0.2837],
+      upper: [298.636,  -0.0149,  3.156,  14.623,  0.952,   0.099],
+      lower: [294.216,  -0.0159,  3.005,  11.962,  1.339,   0.348],
+      max:   [308.213,  -0.0559,  2.104,  19.579, -1.158,  -0.533],
+      min:   [282.976,  -0.0641,  2.227,   7.972,  0.991,   0.926],
+    },
   };
-  // Locations without their own fit (Melbourne, or no location yet) fall back to Brisbane's curves
+  // Before a location is chosen, fall back to Brisbane's curves
   const lstFor = loc => (loc && loc.lst) || LST_MODELS.brisbane;
   function harmonicLST(c, year, day) {
     const t = 2 * Math.PI * day / 365;
@@ -112,7 +120,7 @@
     melbourne: {
       id: 'melbourne', name: 'Melbourne', region: 'Victoria', state: 'VIC',
       lat: -37.8136, lng: 144.9631,
-      lst: LST_MODELS.brisbane, // no Melbourne fit yet
+      lst: LST_MODELS.melbourne,
       rain: { a0: 2.0090, s1: -0.2983, c1: -0.0756, s2: -0.2480, c2: -0.0261, s3: -0.0854, c3: -0.0815 },
       // "victoria", but not Perth's (East) Victoria Park
       patterns: [/\bmelbourne\b/, /\bvic\b/, /\bvictoria\b(?! park)/, /\b3\d{3}\b/,
@@ -721,7 +729,7 @@
   }
 
   /* ---------- Timeline ---------- */
-  const T_MIN = 0, T_MAX = 50; // the max curve peaks near 49.5 °C in January, the min curve dips to ~0–4 °C in winter
+  const T_MIN = 0, T_MAX = 55; // max curves peak at ~49.5 °C (Brisbane, Perth) and ~52.7 °C (Melbourne); min curves dip to ~0–4 °C in winter
   const yPct = v => ((T_MAX - v) / (T_MAX - T_MIN)) * 100;
 
   function renderTimeline(plan) {
