@@ -5,23 +5,35 @@
    * Temperature model (MODIS MOD11A1 daytime LST regression)
    * Returns Kelvin. year = calendar year, day = day of year.
    * ========================================================= */
-  /* we need to remember these curves are only for
-  brisbane (towoomba) */
-  // Coefficients: [intercept, year trend, sin t, cos t, sin 2t, cos 2t]
-  const LST_MODEL = {
-    mid:   [302.008, -0.0549, -0.651,  9.866, -0.395, -1.668], // centre fit (mean)
-    upper: [304.535, -0.0709, -0.994, 10.758, -0.665, -1.726], // 20% of readings lie above this curve
-    lower: [299.831, -0.0393, -0.503,  9.085, -0.441, -1.884], // 20% of readings lie below this curve
-    max:   [312.917, -0.0849, -1.543, 13.005, -1.158, -2.124], // maximum readings
-    min:   [289.016, -0.1710,  1.661,  5.388,  1.353, -0.900], // minimum readings
+  // One set of curves per fitted site. Coefficients: [intercept, year trend, sin t, cos t, sin 2t, cos 2t]
+  // mid = OLS centre fit; upper/lower = quantile fits (q = 0.7 / 0.3); max/min = LP envelopes of all readings
+  const LST_MODELS = {
+    // Brisbane: day_1km_harmonic_regression-Queensland.ipynb (Toowoomba pixel, Darling Downs)
+    brisbane: {
+      mid:   [302.008, -0.0549, -0.651,  9.866, -0.395, -1.668],
+      upper: [304.535, -0.0709, -0.994, 10.758, -0.665, -1.726],
+      lower: [299.831, -0.0393, -0.503,  9.085, -0.441, -1.884],
+      max:   [312.917, -0.0849, -1.543, 13.005, -1.158, -2.124],
+      min:   [289.016, -0.1710,  1.661,  5.388,  1.353, -0.900],
+    },
+    // Perth: day_1km_harmonic_regression-Perth.ipynb (mid taken from the OLS summary)
+    perth: {
+      mid:   [298.1296, -0.0305,  0.4874, 9.6956, -0.1114, -1.0188],
+      upper: [301.808,  -0.0581, -0.691,  9.968,  -0.415,  -1.994],
+      lower: [294.383,   0.0100,  1.422,  9.365,   0.032,  -0.309],
+      max:   [312.917,  -0.0849, -1.543, 13.005,  -1.158,  -2.124],
+      min:   [282.590,  -0.0704,  3.249,  7.084,   1.142,  -0.372],
+    },
   };
+  // Locations without their own fit (Melbourne, or no location yet) fall back to Brisbane's curves
+  const lstFor = loc => (loc && loc.lst) || LST_MODELS.brisbane;
   function harmonicLST(c, year, day) {
     const t = 2 * Math.PI * day / 365;
     return c[0] + c[1] * (year - 2000)
       + c[2] * Math.sin(t) + c[3] * Math.cos(t)
       + c[4] * Math.sin(2 * t) + c[5] * Math.cos(2 * t);
   }
-  const predictLST = (year, day) => harmonicLST(LST_MODEL.mid, year, day);
+  const predictLST = (year, day, loc) => harmonicLST(lstFor(loc).mid, year, day);
   const KELVIN = 273.15;
 
   /* ---------- Date helpers (local, day-granular) ---------- */
@@ -38,12 +50,12 @@
   const dayOfYear = d => daysBetween(new Date(d.getFullYear(), 0, 0), d);
   const daysInYear = y => daysBetween(new Date(y, 0, 1), new Date(y + 1, 0, 1));
   const curveC = (coef, d) => harmonicLST(coef, d.getFullYear(), dayOfYear(d)) - KELVIN;
-  const tempC = d => curveC(LST_MODEL.mid, d);
-  // Spread of readings for a date, in °C: middle 60% (lo–hi) and the min/max curves
-  const tempBand = d => ({
-    lo: curveC(LST_MODEL.lower, d), hi: curveC(LST_MODEL.upper, d),
-    min: curveC(LST_MODEL.min, d), max: curveC(LST_MODEL.max, d),
-  });
+  const tempC = (d, loc) => curveC(lstFor(loc).mid, d);
+  // Spread of readings for a date at a location, in °C: the quantile band (lo–hi) and the min/max curves
+  const tempBand = (d, loc) => {
+    const m = lstFor(loc);
+    return { lo: curveC(m.lower, d), hi: curveC(m.upper, d), min: curveC(m.min, d), max: curveC(m.max, d) };
+  };
 
   /* =========================================================
    * Rainfall model (NASA POWER daily PRECTOTCORR, MERRA-2 bias-corrected, 2001–2025)
@@ -84,6 +96,7 @@
     perth: {
       id: 'perth', name: 'Perth', region: 'Western Australia', state: 'WA',
       lat: -31.9523, lng: 115.8613,
+      lst: LST_MODELS.perth,
       rain: { a0: 1.7200, s1: -0.3661, c1: -1.7134, s2: 0.1700, c2: 0.5263, s3: -0.0028, c3: -0.0764 },
       patterns: [/\bperth\b/, /\bwa\b/, /western australia/, /\b6\d{3}\b/,
         /\b(fremantle|joondalup|subiaco|midland|armadale|rockingham|mandurah|swan valley|northam|york)\b/],
@@ -91,6 +104,7 @@
     brisbane: {
       id: 'brisbane', name: 'Brisbane', region: 'Queensland', state: 'QLD',
       lat: -27.4698, lng: 153.0251,
+      lst: LST_MODELS.brisbane,
       rain: { a0: 3.0382, s1: 1.0769, c1: 1.5261, s2: 0.1884, c2: 0.0705, s3: 0.0834, c3: -0.4432 },
       patterns: [/\bbrisbane\b/, /\bqld\b/, /queensland/, /\b4\d{3}\b/,
         /\b(ipswich|logan|redcliffe|toowoomba|caboolture|gatton|lockyer|redland|moreton)\b/],
@@ -98,6 +112,7 @@
     melbourne: {
       id: 'melbourne', name: 'Melbourne', region: 'Victoria', state: 'VIC',
       lat: -37.8136, lng: 144.9631,
+      lst: LST_MODELS.brisbane, // no Melbourne fit yet
       rain: { a0: 2.0090, s1: -0.2983, c1: -0.0756, s2: -0.2480, c2: -0.0261, s3: -0.0854, c3: -0.0815 },
       // "victoria", but not Perth's (East) Victoria Park
       patterns: [/\bmelbourne\b/, /\bvic\b/, /\bvictoria\b(?! park)/, /\b3\d{3}\b/,
@@ -153,7 +168,7 @@
   const PHASE_CLASS = { sowing: 'c-sowing', growth: 'c-growth', harvest: 'c-harvest', post: 'c-post' };
 
   /* ---------- Planning ---------- */
-  function scoreWindow(start, len, ideal, coef = LST_MODEL.mid) {
+  function scoreWindow(start, len, ideal, coef) {
     let ss = 0, sum = 0;
     for (let i = 0; i < len; i++) {
       const v = curveC(coef, addDays(start, i));
@@ -175,6 +190,7 @@
     const rainOn = Boolean(useRain && loc && crop.rain);
     const key = `${crop.id}:${year}:${target}:${loc ? loc.id : '-'}:${rainOn}`;
     if (windowCache.has(key)) return windowCache.get(key);
+    const model = lstFor(loc);
     const len = crop.phases[0].days;
     const n = daysInYear(year);
     const all = [];
@@ -182,7 +198,7 @@
       const start = new Date(year, 0, 1 + i);
       const rain = loc ? rainWeekly(loc, start, len) : null;
       const rainOk = !rainOn || (rain >= crop.rain.min && rain <= crop.rain.max);
-      all.push({ i, start, rain, rainOk, ...scoreWindow(start, len, target) });
+      all.push({ i, start, rain, rainOk, ...scoreWindow(start, len, target, model.mid) });
     }
     const at = k => all[((k % n) + n) % n]; // circular, so a window straddling New Year is one dip, not two
 
@@ -235,14 +251,14 @@
       return addDays(from, k);
     };
     const withRange = o => {
-      const warm = nearestDip(LST_MODEL.upper, o.start), cool = nearestDip(LST_MODEL.lower, o.start);
+      const warm = nearestDip(model.upper, o.start), cool = nearestDip(model.lower, o.start);
       const ds = [o.start, warm, cool];
       return { ...o, range: { start: new Date(Math.min(...ds)), end: new Date(Math.max(...ds)), warm, cool } };
     };
 
     // Options in date order; `isBest` marks the lowest-RMSE one
     const options = (second ? [best, second] : [best])
-      .map(w => withRange({ ...w, isBest: w === best, warming: tempC(addDays(w.start, len - 1)) > tempC(w.start) }))
+      .map(w => withRange({ ...w, isBest: w === best, warming: tempC(addDays(w.start, len - 1), loc) > tempC(w.start, loc) }))
       .sort((a, b) => a.start - b.start);
     const result = { best, options, rainOn, rainLimited };
     windowCache.set(key, result);
@@ -253,7 +269,7 @@
     let min = Infinity, max = -Infinity, sum = 0, rain = 0;
     const n = daysBetween(start, end);
     for (let i = 0; i < n; i++) {
-      const d = addDays(start, i), v = tempC(d);
+      const d = addDays(start, i), v = tempC(d, loc);
       sum += v; min = Math.min(min, v); max = Math.max(max, v);
       if (loc) rain += rainDay(loc, d);
     }
@@ -705,7 +721,7 @@
   }
 
   /* ---------- Timeline ---------- */
-  const T_MIN = 0, T_MAX = 50; // the max curve peaks near 49.5 °C in January, the min curve dips to ~4 °C in winter
+  const T_MIN = 0, T_MAX = 50; // the max curve peaks near 49.5 °C in January, the min curve dips to ~0–4 °C in winter
   const yPct = v => ((T_MAX - v) / (T_MAX - T_MIN)) * 100;
 
   function renderTimeline(plan) {
@@ -718,8 +734,8 @@
     const temps = [], bands = [];
     for (let i = 0; i <= N; i++) {
       const d = addDays(rStart, i);
-      temps.push(tempC(d));
-      bands.push(tempBand(d));
+      temps.push(tempC(d, state.location));
+      bands.push(tempBand(d, state.location));
     }
     const pathOf = vals => vals.map((v, i) => `${i === 0 ? 'M' : 'L'}${i},${yPct(v).toFixed(2)}`).join('');
     const line = pathOf(temps);
@@ -901,7 +917,7 @@
         const isStart = ph && d.getTime() === ph.start.getTime();
         const inRange = d >= rng.start && d <= rng.end;
         const cls = ['cal-day', ph ? `in ${PHASE_CLASS[ph.key]}` : '', isStart ? 'start' : '', inRange ? 'range' : '', d.getTime() === today.getTime() ? 'today' : ''].join(' ');
-        const title = `${fmtLong(d)} · ${fmtC(tempC(d))}${ph ? ` · ${ph.name}${isStart ? ' begins' : ''}` : ''}${inRange ? ' · in sowing start range' : ''}`;
+        const title = `${fmtLong(d)} · ${fmtC(tempC(d, state.location))}${ph ? ` · ${ph.name}${isStart ? ' begins' : ''}` : ''}${inRange ? ' · in sowing start range' : ''}`;
         cells += `<div class="${cls}" title="${title}">${day}</div>`;
       }
       return `

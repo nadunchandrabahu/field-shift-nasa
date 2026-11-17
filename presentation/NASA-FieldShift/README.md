@@ -91,7 +91,7 @@ def predict_lst(year, day):
 - **The output is in Kelvin.** The app converts it with `tempC = predictLST(...) - 273.15`.
 - Over a year it ranges from about **15.8 °C** (late June) to about **35.9 °C** (early January).
 
-In `app.js` this is `predictLST(year, day)`, and `tempC(date)` wraps it for a JS `Date`.
+In `app.js` this is `predictLST(year, day, loc)`, and `tempC(date, loc)` wraps it for a JS `Date`. Each location has its own set of curves in `LST_MODELS` (Brisbane from `../day_1km_harmonic_regression-Queensland.ipynb`, Perth from `../day_1km_harmonic_regression-Perth.ipynb`), linked through `LOCATIONS[...].lst`. Melbourne doesn't have a fit yet and uses Brisbane's. `lstFor(loc)` picks the right set and falls back to Brisbane when no location is chosen. The coefficients above are Brisbane's.
 
 **Spread band.** Two more harmonic curves with the same terms, also fitted on the Brisbane (Toowoomba) pixel, show how far real readings stray from the centre curve:
 
@@ -217,7 +217,7 @@ The first phase is always treated as the sowing window that gets scored.
 Add an entry to `LOCATIONS` with `id`, `name`, `region`, `state`, `lat`, `lng`, regex `patterns` for matching addresses, and `rain` coefficients (add the site to `SITES` in `../rainfall/fit_rainfall.py`, run it, and paste the printed line). Then add a **Jump to** button in `index.html` (`data-loc="<id>"`). City markers on the map are created from `LOCATIONS` automatically.
 
 ### Use a different model for each location
-At the moment `tempC(date)` ignores location (see Limitations). To support per-site models, give each location its own coefficients, pass the location into `tempC`, and add the location id to the `windowCache` key.
+Add a set of `mid`/`upper`/`lower`/`max`/`min` coefficients to `LST_MODELS` and point the location's `lst` at it. Everything else (`tempC`, `tempBand`, the window search and its cache) already picks curves by location.
 
 ### Real address search
 `matchLocations` is a simple keyword/postcode matcher. To accept any address, swap it for a geocoding API and pick the nearest supported region, or the nearest location that has its own model.
@@ -239,12 +239,12 @@ All colours, radii and fonts are CSS variables in `:root` at the top of `styles.
 
 ## Assumptions and limitations
 
-- **The model has no location input.** Perth, Brisbane and Melbourne currently get the same temperature curve and the same dates. Melbourne is about 1,300 km south of the training pixel, with a much cooler climate, so its dates are especially rough. The training data (`day_1km.csv`) comes from a single MODIS pixel at about −27.96, 151.62, on the Darling Downs west of Brisbane. A note in the app says so.
+- **Melbourne has no temperature model of its own.** Brisbane (MODIS pixel at about −27.96, 151.62, on the Darling Downs) and Perth have their own curves. Melbourne borrows Brisbane's, but it's about 1,300 km further south with a much cooler climate, so its dates are especially rough. A note in the app says so.
 - **The model predicts land-surface temperature, not air or soil temperature.** Daytime LST runs warmer than air temperature, so targets like 20 °C are compared against LST.
 - **The barley target is near the bottom of the curve.** 17.5 °C is only about 1.7 °C above the coldest predicted point, so barley's best window sits across the winter low, and small changes to the target move its date a lot.
 - **"Best fit" is about temperature only.** For corn at 21 °C the autumn date (early May) scores very slightly better than the spring one (mid-August). Corn is normally a spring/summer crop, so Date 2 is usually the sensible choice. The farmer chooses, and the ↗ warming / ↘ cooling label is there to help.
 - **Rainfall is a typical-year curve, not a forecast.** Real rain is lumpy and varies a lot from year to year. The check says whether a window *usually* gets enough rain, not whether it will this year. The rain ranges are rough placeholders.
-- **Rain is per location but temperature isn't**, so for Perth and Melbourne the rain check uses local data while the temperature dates still come from Toowoomba.
+- **The Perth temperature fit uses mixed data.** `../day_1km-perth.csv` contains the Toowoomba pixel as well as the WA one, so Perth's curves are partly shaped by Queensland readings (its max curve is identical to Brisbane's).
 - **The slider warns at the extremes.** If the best window's average is more than 1 °C from the target, an amber note appears.
 - **"Today"** comes from the user's device clock. Dates are worked out in local time, in whole days.
 - **The map tiles need internet** and are © Esri. Leaflet and the fonts also load from CDNs.
