@@ -1,5 +1,11 @@
 # FieldShift: a satellite-informed sowing planner
 
+### 🌱 [Try the live app → nasafieldshift.netlify.app](https://nasafieldshift.netlify.app)
+
+**No download or sign-up needed.** Open the link in any browser, on a computer or a phone. Enter a farm location (Perth, Brisbane or Melbourne) and pick a crop. The app shows the best weeks to start sowing and lays out the whole growing season.
+
+---
+
 FieldShift is a prototype web app that tells a farmer **which weeks to start sowing** a crop. It works from a land-surface temperature (LST) model fitted to 26 years of NASA MODIS satellite readings, with an optional rainfall check based on NASA POWER precipitation data. The farmer picks a farm location and a crop (wheat, barley or corn), and the app lays out the whole season as a timeline and a calendar: sowing, crop growth, harvesting and post-harvest.
 
 This repository holds the whole project, not just the app. It includes the raw satellite exports, the Jupyter notebooks I used to explore the data and choose a model, the rainfall fitting script, and the web app itself. This README walks through how the project was built, step by step.
@@ -110,6 +116,14 @@ The git history of `webapp-v1` shows how it grew:
 
 **How the app picks a sowing date.** For every possible start day it scores the sowing window (6 weeks for wheat and barley, 2 weeks for corn) by the **RMSE** of the predicted daily LST against the farmer's target temperature. RMSE is used instead of a simple average because it rewards windows that *stay* near the target, rather than ones that swing above and below it. With the rainfall check on, a window only qualifies if the typical rain over the 2 weeks before sowing and during the sowing window falls inside the crop's range. From that start date the app chains the remaining phases (growth, harvest, post-harvest) into a full season plan.
 
+**Where the model numbers live.** To keep this first version simple, all of the model parameters are written directly into `webapp-v1/app.js`. That includes the temperature and rainfall coefficients, the target temperatures, the rain ranges and the length of each crop phase. This works well for three locations and three crops, but it doesn't scale. Every new location needs its own fitted coefficients, and every new crop needs its own settings, so editing the code each time would quickly become unmanageable.
+
+As the project grows, these values can and should move into a separate database (or at least a data file the app loads). That database would hold:
+- **One record per location:** its coordinates and its fitted temperature and rainfall coefficients.
+- **One record per crop:** its target sowing temperature, rain range and phase lengths.
+
+The app would then look up the right numbers for whichever location and crop the farmer picks. Adding a new region or crop would mean adding a row of data, with no code changes. It would also let the models be refitted on fresh satellite data and updated without redeploying the app. The right setup depends on where the project goes next. A simple JSON file would do for a handful of regions, and a proper database with an API would suit nationwide coverage.
+
 How I checked it:
 - Ran `node --check` on the JavaScript.
 - Took screenshots in headless Microsoft Edge at desktop (1440 px) and phone (390 px) widths across the main states.
@@ -125,7 +139,7 @@ The full technical write-up is in [`webapp-v1/README.md`](webapp-v1/README.md). 
 
 ## Running it
 
-**The app:** open `webapp-v1/index.html` in a browser. No install or server is needed, just an internet connection for the map tiles, Leaflet and fonts. Query parameters make demos easier, for example:
+**The app:** the easiest way is the live version at **[nasafieldshift.netlify.app](https://nasafieldshift.netlify.app)**. To run it locally, open `webapp-v1/index.html` in a browser. No install or server is needed, just an internet connection for the map tiles, Leaflet and fonts. Query parameters make demos easier, for example:
 
 ```
 webapp-v1/index.html?loc=brisbane&crop=corn&sow=2
@@ -155,6 +169,7 @@ jupyter notebook
 ## Next steps
 
 - Clean single-pixel exports for each location, and a separate fitted model for each one.
+- Move the model coefficients and crop details out of the code and into a database, so that adding a location or crop is a data change, not a code change (see [Building the web app](#6-building-the-web-app-with-claude-code)).
 - Investigate the post-2021 cold bias, starting with the QC flags and comparing against MODIS Aqua (MYD11A1).
 - Use `rate_of_change.csv` in the app to show whether a sowing window is warming or cooling over the decades.
 - Add soil moisture (NASA SMAP) as a more direct seedbed signal than rainfall.
